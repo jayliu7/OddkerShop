@@ -10,7 +10,7 @@ const SHOP_KEY = 'qj394';
  * 例如：const CLOUDFLARE_WORKER_URL = 'https://oddker-proxy.您的帳號.workers.dev';
  * (或於開啟 GitHub Pages 網址時帶入 ?worker=https://oddker-proxy.您的帳號.workers.dev 亦會自動記憶)
  */
-const CLOUDFLARE_WORKER_URL = '';
+const CLOUDFLARE_WORKER_URL = 'https://738ef145.oddker-proxy.pages.dev/';
 
 function resolveProxyBase() {
   const urlParams = new URLSearchParams(window.location.search);
