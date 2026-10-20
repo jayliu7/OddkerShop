@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#006684" />
+      <stop offset="100%" stop-color="#004C63" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <!-- 蓮蓬頭與浴缸極簡圖示 -->
+  <path d="M168 152c0-35.3 28.7-64 64-64h32c35.3 0 64 28.7 64 64v12h-28v-12c0-19.9-16.1-36-36-36h-32c-19.9 0-36 16.1-36 36v136h-28V152z" fill="#A6EEFF"/>
+  <path d="M268 164h84c11 0 20 9 20 20v12H248v-12c0-11 9-20 20-20z" fill="#FFFFFF"/>
+  <circle cx="272" cy="222" r="8" fill="#A6EEFF"/>
+  <circle cx="310" cy="222" r="8" fill="#A6EEFF"/>
+  <circle cx="348" cy="222" r="8" fill="#A6EEFF"/>
+  <circle cx="282" cy="252" r="8" fill="#A6EEFF"/>
+  <circle cx="320" cy="252" r="8" fill="#A6EEFF"/>
+  <path d="M108 296h296c13.3 0 24 10.7 24 24v28c0 53-43 96-96 96H180c-53 0-96-43-96-96v-28c0-13.3 10.7-24 24-24z" fill="#FFFFFF"/>
+  <text x="256" y="385" font-family="system-ui, sans-serif" font-size="56" font-weight="800" fill="#006684" text-anchor="middle">歐客</text>
+</svg>

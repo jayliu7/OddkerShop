@@ -1,0 +1,47 @@
+{
+  "name": "歐客衛浴 行動選購",
+  "short_name": "歐客衛浴",
+  "description": "歐客衛浴設備行動選購 PWA — 專為手機單手瀏覽、多階規格選配、LINE 傳單與官網結帳打造",
+  "id": "./?source=pwa",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F8FA",
+  "theme_color": "#006684",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "商品目錄",
+      "short_name": "商品目錄",
+      "url": "./?tab=catalog",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "購物車結帳",
+      "short_name": "購物車",
+      "url": "./?tab=cart",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

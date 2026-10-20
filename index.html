@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#006684" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="歐客衛浴" />
+  <meta name="description" content="歐客衛浴設備行動選購 PWA — 專為手機單手瀏覽、多階規格選配、LINE 傳單與官網結帳打造" />
+  <title>歐客衛浴 行動選購</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="stylesheet" href="./style.css?v=4" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <!-- 頂部導覽列 -->
+    <header class="top-app-bar">
+      <div class="top-bar-main">
+        <div class="brand-wrap">
+          <img src="./icon.svg" alt="歐客衛浴" class="brand-logo" />
+          <div>
+            <h1 class="brand-title">歐客衛浴 行動選購</h1>
+            <p class="brand-subtitle">台灣在地製造・工廠直營批發</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="btn-install-pwa" class="btn-pill-action hidden" title="安裝到桌面">
+            📲 安裝 App
+          </button>
+          <button id="btn-toggle-search" class="icon-btn" aria-label="搜尋商品">
+            🔍
+          </button>
+          <a href="https://lin.ee/QAvqoH3" target="_blank" rel="noopener" class="btn-line-mini">
+            LINE 客服
+          </a>
+        </div>
+      </div>
+
+      <!-- 搜尋列 (可收合) -->
+      <form id="search-form" class="search-bar hidden">
+        <input
+          type="search"
+          id="search-input"
+          placeholder="搜尋浴櫃尺寸、馬桶、龍頭、編號(如 6800)..."
+          autocomplete="off"
+        />
+        <button type="submit" class="btn-search-submit">搜尋</button>
+        <button type="button" id="btn-clear-search" class="btn-search-clear">清除</button>
+      </form>
+
+      <!-- 優惠跑馬燈 -->
+      <div class="marquee-bar" id="marquee-bar">
+        <span class="marquee-tag">優惠公告</span>
+        <div class="marquee-viewport">
+          <div class="marquee-text" id="marquee-text">
+            全館衛浴套組滿 $9,000 現折 $300，滿 $10,000 現折 $500！載入即時公告中...
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主內容區 -->
+    <main class="main-content" id="main-scroll">
+      <!-- 分頁 1：商品目錄 -->
+      <section id="tab-catalog" class="tab-view active">
+        <!-- Sticky 橫向分類與排序列 -->
+        <div class="sticky-filter-header">
+          <div class="chip-scroll-row" id="main-category-row">
+            <!-- 動態渲染主分類 Chips -->
+          </div>
+          <div class="chip-scroll-row sub-row hidden" id="sub-category-row">
+            <!-- 動態渲染子分類 Chips -->
+          </div>
+          <div class="sort-status-bar">
+            <span id="catalog-status-text" class="status-count">載入商品中...</span>
+            <div class="sort-chips">
+              <button class="sort-chip active" data-sort="DEFAULT">預設</button>
+              <button class="sort-chip" data-sort="HOT">熱銷優先</button>
+              <button class="sort-chip" data-sort="PRICE_ASC">價格低➔高</button>
+              <button class="sort-chip" data-sort="PRICE_DESC">價格高➔低</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 雙欄商品牆 -->
+        <div id="product-grid" class="product-grid"></div>
+
+        <!-- 載入狀態與分頁按鈕 -->
+        <div id="catalog-loading" class="loading-box">
+          <div class="spinner"></div>
+          <p>正在同步歐客衛浴最新商品目錄...</p>
+        </div>
+        <div id="catalog-load-more-wrap" class="load-more-wrap hidden">
+          <button id="btn-load-more" class="btn-outline-full">載入下一頁商品</button>
+        </div>
+      </section>
+
+      <!-- 分頁 2：全部分類快選 -->
+      <section id="tab-categories" class="tab-view hidden">
+        <div class="section-container">
+          <h2 class="section-heading">全館衛浴分類快選</h2>
+          <p class="section-desc">點選任一尺寸或設備類別，立即篩選對應規格商品</p>
+          <div id="category-directory-list" class="category-directory-list"></div>
+        </div>
+      </section>
+
+      <!-- 分頁 3：購物車與雙軌結帳 -->
+      <section id="tab-cart" class="tab-view hidden">
+        <div class="section-container">
+          <div class="promo-banner-card">
+            <div class="promo-title">🎁 官網同步滿額現折試算</div>
+            <p class="promo-desc">單筆滿 NT$9,000 現折 $300・滿 NT$10,000 現折 $500</p>
+          </div>
+
+          <div id="cart-empty-state" class="empty-state hidden">
+            <div class="empty-icon">🛒</div>
+            <h3>購物車目前是空的</h3>
+            <p>快去挑選喜歡的鏡浴櫃、馬桶或龍頭五金吧！</p>
+            <button class="btn-primary" onclick="switchTab('catalog')">前往瀏覽商品</button>
+          </div>
+
+          <div id="cart-filled-state" class="hidden">
+            <div class="cart-header-row">
+              <span id="cart-count-label">已選商品 (0)</span>
+              <button id="btn-clear-cart" class="btn-text-danger">清空購物車</button>
+            </div>
+
+            <div id="cart-items-list" class="cart-items-list"></div>
+
+            <!-- 收件人與安裝備註 (供 LINE 傳單使用) -->
+            <div class="checkout-Note-card">
+              <div class="card-subtitle">📋 訂購人與配送備註（選填，將自動帶入 LINE 訂購單）</div>
+              <div class="form-grid">
+                <input type="text" id="order-name" placeholder="收件人姓名" class="input-field" />
+                <input type="tel" id="order-phone" placeholder="聯絡電話 (如 0912-345678)" class="input-field" />
+                <input type="text" id="order-address" placeholder="配送縣市/地址 (方便客服確認運費)" class="input-field full-span" />
+                <input type="text" id="order-note" placeholder="備註 (如：需確認馬桶管距、需要安裝服務等)" class="input-field full-span" />
+              </div>
+            </div>
+
+            <!-- 金額試算與雙軌下單面板 -->
+            <div class="cart-summary-card">
+              <div class="summary-row">
+                <span>商品小計</span>
+                <strong id="summary-subtotal">NT$ 0</strong>
+              </div>
+              <div class="summary-row discount-row" id="summary-discount-row">
+                <span>滿額現折優惠</span>
+                <strong id="summary-discount">- NT$ 0</strong>
+              </div>
+              <div class="summary-divider"></div>
+              <div class="summary-row total-row">
+                <span>預估應付總額 <small>(不含偏遠運費)</small></span>
+                <strong id="summary-total" class="price-highlight">NT$ 0</strong>
+              </div>
+
+              <div class="dual-checkout-buttons">
+                <button id="btn-line-order" class="btn-line-checkout">
+                  💬 複製訂購單並開啟 LINE 客服 (@677ptill)
+                </button>
+                <button id="btn-web-checkout" class="btn-web-checkout">
+                  🌐 同步購物車至官網線上結帳 (匯款 / 綠界刷卡)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 分頁 4：收藏清單與全台門市 -->
+      <section id="tab-info" class="tab-view hidden">
+        <div class="section-container">
+          <h2 class="section-heading">❤️ 我的收藏商品</h2>
+          <div id="favorites-list" class="product-grid"></div>
+          <div id="favorites-empty" class="empty-state-mini">
+            尚無收藏商品，點選商品右上角愛心即可加入收藏比較。
+          </div>
+
+          <h2 class="section-heading mt-24">🏬 歐客衛浴 全台展示門市</h2>
+          <p class="section-desc">工廠直營・現場展示多款防水發泡板浴櫃與馬桶實品</p>
+          <div id="branches-list" class="branches-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 底部導覽列 -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="catalog">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">商品目錄</span>
+      </button>
+      <button class="nav-item" data-tab="categories">
+        <span class="nav-icon">📂</span>
+        <span class="nav-label">分類快選</span>
+      </button>
+      <button class="nav-item" data-tab="cart">
+        <span class="nav-icon-wrap">
+          <span class="nav-icon">🛒</span>
+          <span id="nav-cart-badge" class="nav-badge hidden">0</span>
+        </span>
+        <span class="nav-label">購物車</span>
+      </button>
+      <button class="nav-item" data-tab="info">
+        <span class="nav-icon">🏬</span>
+        <span class="nav-label">門市/收藏</span>
+      </button>
+    </nav>
+
+    <!-- 商品詳情與多階層規格選配 Bottom Sheet / 全頁抽屜 -->
+    <div id="detail-modal" class="detail-modal hidden" aria-hidden="true">
+      <div class="detail-backdrop" id="detail-backdrop"></div>
+      <div class="detail-sheet">
+        <!-- 詳情頂部列 -->
+        <div class="detail-topbar">
+          <button id="btn-close-detail" class="icon-btn-dark" aria-label="返回">✕</button>
+          <div class="detail-topbar-title" id="detail-topbar-title">商品詳情</div>
+          <div class="detail-topbar-actions">
+            <button id="btn-detail-fav" class="icon-btn-dark" aria-label="收藏">🤍</button>
+            <a id="btn-detail-origin" href="#" target="_blank" rel="noopener" class="icon-btn-dark" title="開啟原網頁">🔗</a>
+          </div>
+        </div>
+
+        <!-- 詳情內容捲動區 -->
+        <div class="detail-body" id="detail-body">
+          <!-- 輪播圖 -->
+          <div class="carousel-container">
+            <div class="carousel-track" id="detail-carousel"></div>
+            <div class="carousel-hint">🔍 點擊圖片可全螢幕雙指放大檢視尺寸</div>
+          </div>
+
+          <!-- 商品基本資訊 -->
+          <div class="detail-info-card">
+            <div class="detail-badges" id="detail-badges"></div>
+            <h2 class="detail-title" id="detail-title">載入中...</h2>
+            <div class="detail-price-box">
+              <span class="detail-price" id="detail-price">NT$ --</span>
+              <span class="detail-stock-badge" id="detail-stock">請選擇規格</span>
+            </div>
+            <p class="detail-summary" id="detail-summary"></p>
+          </div>
+
+          <!-- 多階層互動式規格選擇器 (Cascading Spec Chips) -->
+          <div class="detail-spec-card" id="detail-spec-section">
+            <div class="spec-header-row">
+              <h3>🛠️ 選擇商品規格與配件</h3>
+              <span id="spec-loading-indicator" class="spec-loading hidden">查詢庫存與售價中...</span>
+            </div>
+            <div id="spec-levels-container" class="spec-levels-container"></div>
+
+            <!-- 購買數量 -->
+            <div class="qty-row">
+              <span>購買數量</span>
+              <div class="qty-stepper">
+                <button type="button" id="btn-qty-minus" class="qty-btn">−</button>
+                <span id="detail-qty-val" class="qty-val">1</span>
+                <button type="button" id="btn-qty-plus" class="qty-btn">＋</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 結構化商品圖文與尺寸長圖 -->
+          <div class="detail-desc-card">
+            <h3 class="desc-section-title">📐 商品詳細規格與尺寸圖（點擊圖片可放大）</h3>
+            <div id="detail-description-blocks" class="detail-description-blocks"></div>
+          </div>
+        </div>
+
+        <!-- 詳情底部固定購買列 -->
+        <div class="detail-bottom-bar">
+          <a href="https://lin.ee/QAvqoH3" target="_blank" rel="noopener" class="btn-detail-line">
+            💬 詢問客服
+          </a>
+          <button id="btn-add-to-cart" class="btn-detail-add">
+            🛒 加入購物車
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全螢幕圖片縮放檢視器 (Pinch / Wheel / Tap Zoom) -->
+    <div id="lightbox-modal" class="lightbox-modal hidden">
+      <div class="lightbox-topbar">
+        <span class="lightbox-tip">雙擊或滑動縮放桿可放大 100%~400%，拖曳可平移檢視細節</span>
+        <button id="btn-close-lightbox" class="btn-close-lightbox">✕ 關閉</button>
+      </div>
+      <div class="lightbox-stage" id="lightbox-stage">
+        <img id="lightbox-img" src="" alt="放大預覽" draggable="false" />
+      </div>
+      <div class="lightbox-controls">
+        <span>1x</span>
+        <input type="range" id="lightbox-zoom-range" min="1" max="4" step="0.1" value="1" />
+        <span>4x</span>
+        <button id="btn-reset-zoom" class="btn-reset-zoom">重設大小</button>
+      </div>
+    </div>
+
+    <!-- 官網同步結帳內嵌 Modal -->
+    <div id="checkout-iframe-modal" class="detail-modal hidden">
+      <div class="detail-backdrop" id="checkout-backdrop"></div>
+      <div class="detail-sheet checkout-sheet">
+        <div class="detail-topbar">
+          <button id="btn-close-checkout-modal" class="icon-btn-dark">✕</button>
+          <div class="detail-topbar-title" id="checkout-topbar-title">官網安全結帳收銀台 (已同步購物車)</div>
+          <a id="btn-open-checkout-tab" href="/checkout-proxy/h/ProductCheckOut?key=qj394" target="_blank" rel="noopener" class="icon-btn-dark" title="新分頁開啟">↗</a>
+        </div>
+        <iframe id="checkout-iframe" class="checkout-iframe" src="about:blank"></iframe>
+      </div>
+    </div>
+
+    <!-- Toast 訊息提示 -->
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="./app.js?v=4"></script>
+</body>
+</html>
