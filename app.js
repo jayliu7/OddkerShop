@@ -6,26 +6,41 @@ const BASE_ORIGIN = 'https://www.oddker1.com';
 const SHOP_KEY = 'qj394';
 
 /**
- * 若部署於 GitHub Pages，請將下方 CLOUDFLARE_WORKER_URL 改為您的 Cloudflare Worker 網址
- * 例如：const CLOUDFLARE_WORKER_URL = 'https://oddker-proxy.您的帳號.workers.dev';
- * (或於開啟 GitHub Pages 網址時帶入 ?worker=https://oddker-proxy.您的帳號.workers.dev 亦會自動記憶)
+ * 若部署於 GitHub Pages，請將下方 CLOUDFLARE_WORKER_URL 設為您的 Cloudflare Worker 完整網址 (需含 https://)
  */
 const CLOUDFLARE_WORKER_URL = 'https://autumn-dust-cfba.jayliu7.workers.dev';
+
+function normalizeWorkerUrl(raw) {
+  if (!raw) return '';
+  let s = String(raw).trim().replace(/\/+$/, '');
+  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) {
+    s = 'https://' + s;
+  }
+  return s;
+}
 
 function resolveProxyBase() {
   const urlParams = new URLSearchParams(window.location.search);
   const queryWorker = urlParams.get('worker')?.trim();
   if (queryWorker) {
-    const cleaned = queryWorker.replace(/\/+$/, '');
+    const cleaned = normalizeWorkerUrl(queryWorker);
     localStorage.setItem('oddker_worker_url', cleaned);
     return cleaned;
   }
+
+  // 若於本機開發伺服器 (localhost / 127.0.0.1) 開啟，優先使用本機 server.js 反向代理
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return '';
+  }
+
   if (CLOUDFLARE_WORKER_URL) {
-    return CLOUDFLARE_WORKER_URL.replace(/\/+$/, '');
+    return normalizeWorkerUrl(CLOUDFLARE_WORKER_URL);
   }
   const saved = localStorage.getItem('oddker_worker_url');
-  if (saved && window.location.hostname.endsWith('github.io')) {
-    return saved.replace(/\/+$/, '');
+  if (saved) {
+    return normalizeWorkerUrl(saved);
   }
   return '';
 }
@@ -33,37 +48,35 @@ function resolveProxyBase() {
 const PROXY_BASE = resolveProxyBase();
 const PROXY_ENDPOINT = `${PROXY_BASE}/api/proxy?path=`;
 
-// 歐客衛浴全台門市資料
-const BRANCH_LIST = [
+// 歐客衛浴全台門市資料（預設與官網 /h/data?key=qj394&set=9 同步，並於啟動時動態抓取最新分店頁）
+let BRANCH_LIST = [
   {
-    name: '新北泰山展示中心（總店）',
-    phone: '02-2909-7971',
-    address: '新北市泰山區楓江路86巷57號之3',
-    hours: '週一至週六 09:00–18:00'
+    name: '台中梧棲展示中心（全省總店）',
+    phone: '04-2636-0186',
+    address: '台中市梧棲區仁美街135巷100號',
+    hours: '週二至週六 09:00–17:00',
+    lineId: '@677ptill'
   },
   {
-    name: '桃園中壢展示門市',
-    phone: '03-462-5655',
-    address: '桃園市中壢區普忠路259號',
-    hours: '週一至週六 09:30–18:30'
+    name: '新北板橋店',
+    phone: '02-2687-5509',
+    address: '新北市板橋區溪崑一街26號',
+    hours: '週二至週六 09:00–17:00',
+    lineId: '@677ptill'
   },
   {
-    name: '台中烏日展示門市',
-    phone: '04-2337-8585',
-    address: '台中市烏日區中山路三段406號',
-    hours: '週一至週六 09:30–18:30'
+    name: '台中中工店',
+    phone: '04-2636-0186',
+    address: '台中市西屯區工業區一路58巷11弄46號',
+    hours: '週二至週六 09:00–17:00',
+    lineId: '@677ptill'
   },
   {
-    name: '台南永康展示門市',
-    phone: '06-253-8188',
-    address: '台南市永康區中正北路343號',
-    hours: '週一至週六 09:30–18:30'
-  },
-  {
-    name: '高雄仁武展示門市',
-    phone: '07-372-6566',
-    address: '高雄市仁武區鳳仁路95之3號',
-    hours: '週一至週六 09:30–18:30'
+    name: '高雄苓雅店',
+    phone: '07-771-0058',
+    address: '高雄市苓雅區福德一路254號',
+    hours: '週二至週六 09:00–17:00',
+    lineId: '@003edbnp'
   }
 ];
 
@@ -101,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initServiceWorkerAndInstallPrompt();
   bindUIEvents();
   renderBranches();
+  loadOfficialBranches();
   updateCartBadgeAndView();
   renderFavorites();
   loadCatalog(true);
@@ -148,11 +162,11 @@ function sanitizeLocalCartOnStartup() {
 }
 
 function initServiceWorkerAndInstallPrompt() {
-  // 清除舊版 Service Worker 快取 (oddker-pwa-v1 / v2 / v3)，避免瀏覽器卡在舊版 JS 或舊結帳頁快取
+  // 清除舊版 Service Worker 快取 (oddker-pwa-v1 ~ v4)，避免瀏覽器卡在舊版 JS 或舊結帳頁快取
   if ('caches' in window) {
     caches.keys().then(keys => {
       keys.forEach(k => {
-        if (k !== 'oddker-pwa-v4') {
+        if (k !== 'oddker-pwa-v5') {
           caches.delete(k);
         }
       });
@@ -161,7 +175,7 @@ function initServiceWorkerAndInstallPrompt() {
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-      .register('./sw.js?v=4')
+      .register('./sw.js?v=5')
       .then(reg => {
         reg.update().catch(() => {});
       })
@@ -198,7 +212,7 @@ async function fetchViaProxy(targetPath, options = {}) {
   const proxyUrl = PROXY_ENDPOINT + encodeURIComponent(targetPath);
   try {
     const resp = await fetch(proxyUrl, {
-      credentials: 'same-origin',
+      credentials: PROXY_BASE ? 'omit' : 'same-origin',
       cache: 'no-store',
       ...options
     });
@@ -427,7 +441,7 @@ function parseProductDetailHtml(productId, htmlText) {
     id: productId,
     title,
     serial,
-    images: images.length > 0 ? images : [{ url: '/icon.svg', picId: '' }],
+    images: images.length > 0 ? images : [{ url: './icon.svg', picId: '' }],
     priceDisplay,
     maxBuyQty,
     summary: summaryLines.join('\n'),
@@ -952,7 +966,7 @@ function addCurrentDetailToCart() {
       productId: detail.id,
       title: detail.title,
       serial: detail.serial,
-      thumbUrl: detail.images[0]?.url || '/icon.svg',
+      thumbUrl: detail.images[0]?.url || './icon.svg',
       specSummary,
       optionContId,
       unitPrice,
@@ -1195,7 +1209,7 @@ function toggleFavorite(prod) {
       id: prod.id,
       title: prod.title,
       serial: prod.serial || '',
-      thumbUrl: prod.thumbUrl || prod.images?.[0]?.url || '/icon.svg',
+      thumbUrl: prod.thumbUrl || prod.images?.[0]?.url || './icon.svg',
       priceDisplay: prod.priceDisplay || '查看售價'
     });
     showToast('已加入收藏清單 ❤️');
@@ -1221,22 +1235,94 @@ function renderFavorites() {
 
 function renderBranches() {
   const container = document.getElementById('branches-list');
+  if (!container) return;
   container.innerHTML = '';
   BRANCH_LIST.forEach(b => {
     const card = document.createElement('div');
     card.className = 'branch-card';
-    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('歐客衛浴 ' + b.address)}`;
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address)}`;
+    const lineHtml = b.lineId ? `<div class="branch-detail">💬 官方 LINE：${b.lineId}</div>` : '';
+    const detailLinkHtml = b.detailUrl
+      ? `<a href="${b.detailUrl}" target="_blank" rel="noopener" class="btn-mini-link">🔗 官網分店頁</a>`
+      : '';
     card.innerHTML = `
       <div class="branch-name">${b.name}</div>
       <div class="branch-detail">📍 ${b.address}</div>
       <div class="branch-detail">🕒 ${b.hours}</div>
+      ${lineHtml}
       <div class="branch-actions">
         <a href="tel:${b.phone}" class="btn-mini-link">📞 撥打 ${b.phone}</a>
         <a href="${mapUrl}" target="_blank" rel="noopener" class="btn-mini-link">🗺️ Google 地圖導航</a>
+        ${detailLinkHtml}
       </div>
     `;
     container.appendChild(card);
   });
+}
+
+/**
+ * 動態從官網「全省分店」(/h/data?key=qj394&set=9) 與各分店內頁 (DataDetail) 同步最新門市資訊
+ */
+async function loadOfficialBranches() {
+  try {
+    const listResp = await fetchViaProxy(`/h/data?key=${SHOP_KEY}&set=9`);
+    const listHtml = await listResp.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(listHtml, 'text/html');
+
+    const footerHoursEl = doc.querySelector('#footer .f-contact .fa-clock')?.parentElement;
+    const defaultHours = footerHoursEl
+      ? footerHoursEl.textContent.replace(/\s+/g, ' ').trim()
+      : '週二 - 週六 早上9:00 - 下午5:00';
+    const defaultPhone = doc.querySelector('#footer .footerTel')?.textContent?.trim() || '04-2636-0186';
+
+    const links = Array.from(doc.querySelectorAll('.event-list-content h4 a[href*="DataDetail"]'));
+    if (links.length === 0) return;
+
+    const fetched = await Promise.all(
+      links.map(async (a) => {
+        const href = a.getAttribute('href') || '';
+        const regionTitle = a.textContent.trim();
+        const relPath = href.startsWith('/') ? href : `/h/${href.replace(/^\/?h\//i, '')}`;
+        try {
+          const detailResp = await fetchViaProxy(relPath);
+          const detailHtml = await detailResp.text();
+          const dDoc = parser.parseFromString(detailHtml, 'text/html');
+          const contentRoot = dDoc.querySelector('#dataDetail') || dDoc.body;
+          const strongText = contentRoot.querySelector('p strong')?.textContent?.trim() || '';
+          const name = strongText && strongText !== regionTitle
+            ? `${regionTitle}－${strongText}`
+            : (strongText || regionTitle);
+
+          const fullText = contentRoot.innerText || contentRoot.textContent || '';
+          const addrMatch = fullText.match(/([^\s\n\r]{2,3}[市縣][^\n\r<>]+?號(?:之\d+)?)/);
+          const phoneMatch = fullText.match(/(?:（0\d）|\(0\d\)|0\d)[-\s]?\d{3,4}[-\s]?\d{3,4}/);
+          const lineMatch = fullText.match(/@[0-9a-zA-Z_]+/);
+
+          return {
+            name,
+            address: addrMatch ? addrMatch[1].trim() : '台中市梧棲區仁美街135巷100號',
+            phone: phoneMatch ? phoneMatch[0].replace(/[（）()]/g, '-').replace(/^-/, '').replace(/--+/g, '-') : defaultPhone,
+            hours: defaultHours,
+            lineId: lineMatch ? lineMatch[0] : '@677ptill',
+            detailUrl: `${BASE_ORIGIN}${relPath}`
+          };
+        } catch (_) {
+          return null;
+        }
+      })
+    );
+
+    const validBranches = fetched.filter(Boolean);
+    if (validBranches.length > 0) {
+      // 將「全省總店」排在第一筆
+      validBranches.sort((a, b) => (b.name.includes('總店') ? 1 : 0) - (a.name.includes('總店') ? 1 : 0));
+      BRANCH_LIST = validBranches;
+      renderBranches();
+    }
+  } catch (err) {
+    console.warn('無法動態同步分店列表，使用內建分店清單:', err);
+  }
 }
 
 // ==================== 全螢幕圖片縮放檢視器 ====================
