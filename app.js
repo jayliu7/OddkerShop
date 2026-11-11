@@ -48,35 +48,43 @@ function resolveProxyBase() {
 const PROXY_BASE = resolveProxyBase();
 const PROXY_ENDPOINT = `${PROXY_BASE}/api/proxy?path=`;
 
-// 歐客衛浴全台門市資料（預設與官網 /h/data?key=qj394&set=9 同步，並於啟動時動態抓取最新分店頁）
+// 歐客衛浴全台門市資料（與官網 /h/contact?key=qj394 及 /h/data?key=qj394&set=9 同步，並於啟動時動態抓取最新資訊）
 let BRANCH_LIST = [
   {
-    name: '台中梧棲展示中心（全省總店）',
-    phone: '04-2636-0186',
+    name: '台中總公司（全省總店）',
+    phone: '(04) 2636-0186',
     address: '台中市梧棲區仁美街135巷100號',
-    hours: '週二至週六 09:00–17:00',
-    lineId: '@677ptill'
+    hours: '週二 - 週六 早上9:00 - 下午17:00',
+    lineId: '@677ptill',
+    lineUrl: 'https://line.me/ti/p/~@677ptill',
+    detailUrl: 'https://www.oddker1.com/h/DataDetail?key=qj394&cont=495823'
   },
   {
-    name: '新北板橋店',
-    phone: '02-2687-5509',
+    name: '新北市－板橋門市',
+    phone: '(02) 2687-5509',
     address: '新北市板橋區溪崑一街26號',
-    hours: '週二至週六 09:00–17:00',
-    lineId: '@677ptill'
+    hours: '週二 - 週六 早上9:00 - 下午18:00',
+    lineId: '@382azkah',
+    lineUrl: 'https://line.me/ti/p/~@382azkah',
+    detailUrl: 'https://www.oddker1.com/h/DataDetail?key=qj394&cont=451425'
   },
   {
-    name: '台中中工店',
-    phone: '04-2636-0186',
+    name: '台中市－中工門市',
+    phone: '(04) 2317-0389',
     address: '台中市西屯區工業區一路58巷11弄46號',
-    hours: '週二至週六 09:00–17:00',
-    lineId: '@677ptill'
+    hours: '週二 - 週六 早上9:00 - 晚上17:00',
+    lineId: '@677ptill',
+    lineUrl: 'https://line.me/ti/p/~@677ptill',
+    detailUrl: 'https://www.oddker1.com/h/DataDetail?key=qj394&cont=452302'
   },
   {
-    name: '高雄苓雅店',
-    phone: '07-771-0058',
+    name: '高雄市－苓雅門市',
+    phone: '(07) 7710-058',
     address: '高雄市苓雅區福德一路254號',
-    hours: '週二至週六 09:00–17:00',
-    lineId: '@003edbnp'
+    hours: '週二 - 週六 早上9:00 - 下午18:00',
+    lineId: '@003edbnp',
+    lineUrl: 'https://line.me/ti/p/~@003edbnp',
+    detailUrl: 'https://www.oddker1.com/h/DataDetail?key=qj394&cont=527971'
   }
 ];
 
@@ -1241,17 +1249,20 @@ function renderBranches() {
     const card = document.createElement('div');
     card.className = 'branch-card';
     const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address)}`;
-    const lineHtml = b.lineId ? `<div class="branch-detail">💬 官方 LINE：${b.lineId}</div>` : '';
+    const telHref = b.phone.replace(/[^0-9+]/g, '');
+    const lineHtml = b.lineId
+      ? `<div class="branch-detail">💬 官方 LINE：<a href="https://line.me/ti/p/~${encodeURIComponent(b.lineId)}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;">${b.lineId}</a></div>`
+      : '';
     const detailLinkHtml = b.detailUrl
       ? `<a href="${b.detailUrl}" target="_blank" rel="noopener" class="btn-mini-link">🔗 官網分店頁</a>`
       : '';
     card.innerHTML = `
       <div class="branch-name">${b.name}</div>
       <div class="branch-detail">📍 ${b.address}</div>
-      <div class="branch-detail">🕒 ${b.hours}</div>
+      <div class="branch-detail">🕒 營業時間：${b.hours}</div>
       ${lineHtml}
       <div class="branch-actions">
-        <a href="tel:${b.phone}" class="btn-mini-link">📞 撥打 ${b.phone}</a>
+        <a href="tel:${telHref}" class="btn-mini-link">📞 撥打 ${b.phone}</a>
         <a href="${mapUrl}" target="_blank" rel="noopener" class="btn-mini-link">🗺️ Google 地圖導航</a>
         ${detailLinkHtml}
       </div>
@@ -1261,63 +1272,57 @@ function renderBranches() {
 }
 
 /**
- * 動態從官網「全省分店」(/h/data?key=qj394&set=9) 與各分店內頁 (DataDetail) 同步最新門市資訊
+ * 動態從官網「聯絡我們」(/h/contact?key=qj394) 與「全省分店」(/h/data?key=qj394&set=9)
+ * 同步各分店獨立的營業時間、電話、地址與各區專屬 LINE 帳號
  */
 async function loadOfficialBranches() {
   try {
-    const listResp = await fetchViaProxy(`/h/data?key=${SHOP_KEY}&set=9`);
-    const listHtml = await listResp.text();
+    const contactResp = await fetchViaProxy(`/h/contact?key=${SHOP_KEY}`);
+    const contactHtml = await contactResp.text();
     const parser = new DOMParser();
-    const doc = parser.parseFromString(listHtml, 'text/html');
+    const cDoc = parser.parseFromString(contactHtml, 'text/html');
 
-    const footerHoursEl = doc.querySelector('#footer .f-contact .fa-clock')?.parentElement;
-    const defaultHours = footerHoursEl
-      ? footerHoursEl.textContent.replace(/\s+/g, ' ').trim()
-      : '週二 - 週六 早上9:00 - 下午5:00';
-    const defaultPhone = doc.querySelector('#footer .footerTel')?.textContent?.trim() || '04-2636-0186';
+    const contactRoot = cDoc.querySelector('.contact-info');
+    if (!contactRoot) return;
 
-    const links = Array.from(doc.querySelectorAll('.event-list-content h4 a[href*="DataDetail"]'));
-    if (links.length === 0) return;
+    const parsedBranches = [];
+    const headers = Array.from(contactRoot.querySelectorAll('div > span strong, div strong'));
 
-    const fetched = await Promise.all(
-      links.map(async (a) => {
-        const href = a.getAttribute('href') || '';
-        const regionTitle = a.textContent.trim();
-        const relPath = href.startsWith('/') ? href : `/h/${href.replace(/^\/?h\//i, '')}`;
-        try {
-          const detailResp = await fetchViaProxy(relPath);
-          const detailHtml = await detailResp.text();
-          const dDoc = parser.parseFromString(detailHtml, 'text/html');
-          const contentRoot = dDoc.querySelector('#dataDetail') || dDoc.body;
-          const strongText = contentRoot.querySelector('p strong')?.textContent?.trim() || '';
-          const name = strongText && strongText !== regionTitle
-            ? `${regionTitle}－${strongText}`
-            : (strongText || regionTitle);
+    headers.forEach(strongEl => {
+      const rawName = (strongEl.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!rawName) return;
 
-          const fullText = contentRoot.innerText || contentRoot.textContent || '';
-          const addrMatch = fullText.match(/([^\s\n\r]{2,3}[市縣][^\n\r<>]+?號(?:之\d+)?)/);
-          const phoneMatch = fullText.match(/(?:（0\d）|\(0\d\)|0\d)[-\s]?\d{3,4}[-\s]?\d{3,4}/);
-          const lineMatch = fullText.match(/@[0-9a-zA-Z_]+/);
+      const headerDiv = strongEl.closest('div');
+      const infoP = headerDiv ? headerDiv.nextElementSibling : null;
+      if (!infoP || infoP.tagName !== 'P') return;
 
-          return {
-            name,
-            address: addrMatch ? addrMatch[1].trim() : '台中市梧棲區仁美街135巷100號',
-            phone: phoneMatch ? phoneMatch[0].replace(/[（）()]/g, '-').replace(/^-/, '').replace(/--+/g, '-') : defaultPhone,
-            hours: defaultHours,
-            lineId: lineMatch ? lineMatch[0] : '@677ptill',
-            detailUrl: `${BASE_ORIGIN}${relPath}`
-          };
-        } catch (_) {
-          return null;
-        }
-      })
-    );
+      const text = (infoP.innerText || infoP.textContent || '').replace(/\u00a0/g, ' ');
+      const addrMatch = text.match(/地址[：:]\s*([^\n\r]+)/);
+      const phoneMatch = text.match(/電話[：:]\s*([^\n\r]+)/);
+      const hoursMatch = text.match(/營業時間[：:]\s*([^\n\r]+)/);
+      const lineMatch = text.match(/@[0-9a-zA-Z_]+/);
 
-    const validBranches = fetched.filter(Boolean);
-    if (validBranches.length > 0) {
-      // 將「全省總店」排在第一筆
-      validBranches.sort((a, b) => (b.name.includes('總店') ? 1 : 0) - (a.name.includes('總店') ? 1 : 0));
-      BRANCH_LIST = validBranches;
+      const address = addrMatch ? addrMatch[1].trim() : '';
+      if (!address) return;
+
+      // 對應既有分店詳細頁網址
+      const fallback = BRANCH_LIST.find(b =>
+        (address && b.address.includes(address.slice(0, 6))) ||
+        b.name.includes(rawName.replace(/門市|總公司/g, ''))
+      );
+
+      parsedBranches.push({
+        name: fallback ? fallback.name : rawName,
+        address,
+        phone: phoneMatch ? phoneMatch[1].trim() : (fallback?.phone || '(04) 2636-0186'),
+        hours: hoursMatch ? hoursMatch[1].replace(/\s+/g, ' ').trim() : (fallback?.hours || '週二 - 週六 早上9:00 - 下午17:00'),
+        lineId: lineMatch ? lineMatch[0].trim() : (fallback?.lineId || '@677ptill'),
+        detailUrl: fallback?.detailUrl || `${BASE_ORIGIN}/h/data?key=${SHOP_KEY}&set=9`
+      });
+    });
+
+    if (parsedBranches.length > 0) {
+      BRANCH_LIST = parsedBranches;
       renderBranches();
     }
   } catch (err) {

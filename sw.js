@@ -5,7 +5,7 @@
  * 2. App Shell 靜態資源 (HTML/CSS/JS/Manifest/Icon)：Network-First + 離線快取備援，相容本機與 GitHub Pages 子路徑
  */
 
-const CACHE_NAME = 'oddker-pwa-v5';
+const CACHE_NAME = 'oddker-pwa-v6';
 const APP_SHELL = [
   './',
   './index.html',
